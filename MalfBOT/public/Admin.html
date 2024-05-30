@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <title>Панель администратора</title>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="/">Панель администратора</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+            <li class="nav-item active">
+                <a class="nav-link" href="/">Главная <span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/client">Клиенты</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/master">Сотрудники</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/service">Услуги</a>
+            </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container">
+        <h2>Выберите парикмахера:</h2>
+        <select id="masterSelect" onchange="displayMasterName()">
+            <option value="">Выберите парикмахера</option>
+        </select>
+        <p id="masterName"></p>
+        <p>Выберите дату: <input type="date" name="calendar" id="schedule" onchange="displaySchedule()">
+        <div class="container">
+            <table class="table" id="scheduletable" style="display: none;">
+                <thead class="thead-dark">
+                  <tr>
+                    <th scope="col">Время</th>
+                    <th scope="col">Клиент</th>
+                    <th scope="col">Особенности</th>
+                    <th scope="col">Телефон</th>
+                    <th scope="col">Действие</th>
+                  </tr>
+                </thead>
+                <tbody id="scheduletablebody">
+        
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        fetch('/admin/masters')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('masterSelect');
+                data.forEach(master => {
+                    const option = document.createElement('option');
+                    option.value = master.id; 
+                    option.textContent = master.full_name;
+                    select.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Ошибка:', error));
+        const select = document.getElementById('masterSelect');
+        const selectSchedule = document.getElementById('schedule');
+        let selectedMasterId = select.value;
+        function displayMasterName() {
+            selectedMasterId = select.value;
+            if (selectedMasterId) {
+                fetch(`/admin/masters/${selectedMasterId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('masterName').textContent = `Имя мастера: ${data.full_name}, возраст: ${data.age}, номер телефона: ${data.phone}, стаж работы: ${data.exp}, услуги: ${data.services}`;
+                    })
+                    .catch(error => console.error('Ошибка:', error));
+            } else {
+                document.getElementById('masterName').textContent = '';
+            }
+        }
+        function displaySchedule() {
+            const selectedDay = selectSchedule.value;
+            const table = document.getElementById('scheduletable');
+            if (selectedMasterId) {
+                fetch(`/schedule/${selectedMasterId}/${selectedDay}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const tableBody = document.getElementById('scheduletablebody');
+                        table.style.display = "block";
+                        tableBody.innerHTML = ''; 
+
+                        data.forEach(item => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <th scope="row">${item.time}</th>
+                                <td>${item.full_name}</td>
+                                <td>${item.feature}</td>
+                                <td>${item.phone}</td>
+                                <td><button onclick="deleteClient(${item.client_id})" class="btn btn-danger">Удалить</button></td>
+                            `;
+                            console.log("item.client_id: " + item.id);
+                            console.log("item.full_name: " + item.full_name);
+                            tableBody.appendChild(row);
+                        });
+                    })
+                    .catch(error => console.error('Error:', error));
+            } else {
+                table.style.display = "none";
+            }
+        }
+
+        function deleteClient(clientId) {
+            if (confirm("Вы уверены, что хотите удалить этого клиента?")) {
+                fetch(`/admin/clients/${clientId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert(`Клиент успешно удален с id: ${clientId}`);
+                        displaySchedule(); 
+                    } else {
+                        alert('Ошибка при удалении клиента');
+                    }
+                })
+                .catch(error => console.error('Ошибка:', error));
+            }
+        }
+    </script>
+<!--BOOTSTRAP :D-->
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/js/popper.min.js" integrity="sha384-ApNbgh9B+Y1Mtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</body>
+</html>
